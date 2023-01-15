@@ -1,1 +1,1 @@
-# sync-paxos
+# binary-paxos
