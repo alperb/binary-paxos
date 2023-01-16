@@ -121,17 +121,17 @@ class Node:
                 
                 if self.__is_join_message(msg):
                     join_count += 1
+
+                    decoded = self.__decode_message(msg)
+                    if (decoded) and (decoded['max_voted_round'] > recv_max_voted_round):
+                        recv_max_voted_round = decoded['max_voted_round']
+                        recv_max_voted_value = decoded['max_voted_value']
                     
-                if self.__is_start_message(msg):
-                    if (sender != self.id):
-                        decoded = self.__decode_message(msg)
-                        if (decoded) and (decoded['max_voted_round'] > recv_max_voted_round):
-                            recv_max_voted_round = decoded['max_voted_round']
-                            recv_max_voted_value = decoded['max_voted_value']
-                    else:
-                        if self.max_voted_round > recv_max_voted_round:
-                            recv_max_voted_round = self.max_voted_round
-                            recv_max_voted_value = self.max_voted_value
+                if self.__is_start_message(msg) and sender == self.id:
+                    join_count += 1
+                    if self.max_voted_round > recv_max_voted_round:
+                        recv_max_voted_round = self.max_voted_round
+                        recv_max_voted_value = self.max_voted_value
 
                 received_messages.append((sender, msg))
             except Exception as e:
@@ -182,20 +182,14 @@ class Node:
                 if recv_timer + self.timeout <= time.time():
                     break
         
-        
-        # check if vote_count is greater than half of the nodes
-        if vote_count <= (self.num_nodes / 2):
-            print(f'LEADER OF ROUND {self.current_round} CHANGED ROUND')
-            self.__broadcast(f"ROUNDCHANGE", with_fail=False, omit_self=True)
-            self.__trigger_barrier()
-            return
-        
         # no max value has been voted on so far in this round
         if self.max_voted_value is None:
             self.max_voted_value = self.value
-        
-        print(f'LEADER OF ROUND {self.current_round} DECIDED ON VALUE {self.max_voted_value}')
-        self.decision = self.max_voted_value
+
+        # check if vote_count is greater than half of the nodes
+        if vote_count > (self.num_nodes / 2):
+            print(f'LEADER OF ROUND {self.current_round} DECIDED ON VALUE {self.max_voted_value}')
+            self.decision = self.max_voted_value
         self.__trigger_barrier()
 
         
